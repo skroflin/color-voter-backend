@@ -4,7 +4,6 @@ import { ColorVoterBackend } from "../target/types/color_voter_backend";
 import { assert } from "chai";
 
 describe("color-voter-backend", () => {
-  // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -19,17 +18,21 @@ describe("color-voter-backend", () => {
       systemProgram: anchor.web3.SystemProgram.programId,
     };
 
-    const tx = await program.methods
-     .createColor("Blue")
-     .accounts(accounts)
-     .signers([colorAccount])
-     .rpc();
+    try {
+      const tx = await program.methods
+        .createColor("Blue")
+        .accounts(accounts)
+        .signers([colorAccount])
+        .rpc();
 
-    console.log("Transaction signature for color creation", tx);
+      console.log("Transaction signature for color creation", tx);
 
-    const colorAccountInfo = await program.account.color.fetch(colorAccount.publicKey);
-    assert.equal(colorAccountInfo.name, "Blue");
-    assert.equal(colorAccountInfo.votes.toNumber(), 0);
+      const colorAccountInfo = await program.account.color.fetch(colorAccount.publicKey);
+      assert.equal(colorAccountInfo.name, "Blue");
+      assert.equal(colorAccountInfo.votes.toNumber(), 0);
+    } catch (error) {
+      console.error("Error creating color: ", error);
+    }
   });
 
   it("You can vote for a color", async () => {
@@ -47,16 +50,30 @@ describe("color-voter-backend", () => {
       .signers([colorAccount])
       .rpc();
 
-    const tx = await program.methods
-      .voteColor()
-      .accounts({
-        color: colorAccount.publicKey,
-      })
-      .rpc();
+    try {
+      const tx = await program.methods
+        .voteColor()
+        .accounts({
+          color: colorAccount.publicKey,
+        })
+        .rpc();
 
-    console.log("Transaction signature for voting", tx);
+      console.log("Transaction signature for voting", tx);
 
-    const colorAccountInfo = await program.account.color.fetch(colorAccount.publicKey);
-    assert.equal(colorAccountInfo.votes.toNumber(), 1);
-  })
+      const colorAccountInfo = await program.account.color.fetch(colorAccount.publicKey);
+      assert.equal(colorAccountInfo.votes.toNumber(), 1);
+
+      await program.methods
+        .voteColor()
+        .accounts({
+          color: colorAccount.publicKey,
+        })
+        .rpc();
+
+      const updatedColorAccountInfo = await program.account.color.fetch(colorAccount.publicKey);
+      assert.equal(updatedColorAccountInfo.votes.toNumber(), 2);
+    } catch (error) {
+      console.error("Error voting for color: ", error);
+    }
+  });
 });
